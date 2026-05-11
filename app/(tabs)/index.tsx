@@ -1,98 +1,175 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Href, router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import {
+  ActivityButton,
+  IconButton,
+  Screen,
+  ScreenHeader,
+  SectionHeader,
+  WorkoutCard,
+  wheelieColors,
+} from '@/components/wheelie-ui';
+import { ActivityType, activityOptions, useWheelie } from '@/data/wheelie-store';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { workouts, joinedWorkoutIds } = useWheelie();
+  const upcomingWorkouts = workouts.slice(0, 3);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const openTrainings = (activity?: ActivityType) => {
+    router.push(
+      activity
+        ? ({ pathname: '/trainings', params: { activity } } as Href)
+        : ('/trainings' as Href),
+    );
+  };
+
+  return (
+    <Screen>
+      <ScreenHeader
+        eyebrow="Тренируйтесь вместе"
+        title="Wheelie"
+        action={<IconButton icon="bell-outline" onPress={() => router.push('/community' as Href)} />}
+      />
+
+      <View style={styles.hero}>
+        <View style={styles.heroTopline}>
+          <View style={styles.liveDot} />
+          <Text style={styles.heroMeta}>{workouts.length} тренировок рядом</Text>
+        </View>
+        <Text style={styles.heroTitle}>Найдите следующую тренировку</Text>
+        <Text style={styles.heroText}>
+          Велозаезды, бег, прогулки и фитнес-сессии с людьми рядом с вами.
+        </Text>
+        <View style={styles.heroActions}>
+          <Pressable style={styles.primaryButton} onPress={() => openTrainings()}>
+            <Text style={styles.primaryButtonText}>Найти тренировку</Text>
+            <MaterialCommunityIcons name="arrow-right" size={19} color="#06110b" />
+          </Pressable>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => router.push('/training/create' as Href)}>
+            <Text style={styles.secondaryButtonText}>Создать тренировку</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <SectionHeader title="Активности" actionLabel="Все" onActionPress={() => openTrainings()} />
+      <View style={styles.activityGrid}>
+        {activityOptions.map((item) => (
+          <ActivityButton
+            key={item.id}
+            label={item.label}
+            icon={item.icon}
+            color={item.color}
+            onPress={() => openTrainings(item.id)}
+          />
+        ))}
+      </View>
+
+      <SectionHeader
+        title="Ближайшие тренировки"
+        actionLabel="Смотреть все"
+        onActionPress={() => openTrainings()}
+      />
+      <View style={styles.cardList}>
+        {upcomingWorkouts.map((workout) => (
+          <WorkoutCard
+            key={workout.id}
+            workout={workout}
+            joined={joinedWorkoutIds.includes(workout.id)}
+            onPress={() => router.push(`/training/${workout.id}` as Href)}
+          />
+        ))}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  hero: {
+    backgroundColor: wheelieColors.surface,
+    borderColor: wheelieColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 28,
+    padding: 22,
+  },
+  heroTopline: {
     alignItems: 'center',
+    flexDirection: 'row',
     gap: 8,
+    marginBottom: 16,
   },
-  stepContainer: {
+  liveDot: {
+    backgroundColor: wheelieColors.accent,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  heroMeta: {
+    color: wheelieColors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  heroTitle: {
+    color: wheelieColors.text,
+    fontSize: 30,
+    fontWeight: '900',
+    letterSpacing: 0,
+    lineHeight: 35,
+    marginBottom: 10,
+    maxWidth: 310,
+  },
+  heroText: {
+    color: '#a8b1bd',
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 22,
+    maxWidth: 340,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  primaryButton: {
+    alignItems: 'center',
+    backgroundColor: wheelieColors.accent,
+    borderRadius: 8,
+    flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
+    minHeight: 46,
+    paddingHorizontal: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  primaryButtonText: {
+    color: '#06110b',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: wheelieColors.surfaceAlt,
+    borderColor: wheelieColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
+    color: wheelieColors.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  activityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 28,
+  },
+  cardList: {
+    gap: 12,
   },
 });
