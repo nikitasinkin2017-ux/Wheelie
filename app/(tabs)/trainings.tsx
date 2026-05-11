@@ -1,29 +1,53 @@
 import { Href, router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {
-  ActivityButton,
-  EmptyState,
-  IconButton,
-  Screen,
-  ScreenHeader,
-  SectionHeader,
-  WorkoutCard,
-} from '@/components/wheelie-ui';
-import { ActivityType, activityOptions, useWheelie } from '@/data/wheelie-store';
+import { EmptyState, IconButton, Screen, ScreenHeader, wheelieColors } from '@/components/wheelie-ui';
+import { TrainingCard } from '@/components/TrainingCard';
+import { TrainingFilters } from '@/components/TrainingFilters';
+import { useTrainings } from '@/hooks/useTrainings';
+import { activityOptions } from '@/mock/trainings';
+import { ActivityType, Difficulty, TrainingFilters as TrainingFiltersValue } from '@/types/training';
 
 function normalizeActivity(value: unknown): ActivityType | undefined {
   return activityOptions.find((option) => option.id === value)?.id;
 }
 
-export default function TrainingsScreen() {
-  const params = useLocalSearchParams<{ activity?: string }>();
-  const activeActivity = normalizeActivity(params.activity);
-  const { getWorkoutsByActivity, joinedWorkoutIds } = useWheelie();
-  const workouts = getWorkoutsByActivity(activeActivity);
+function normalizeText(value: unknown) {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
 
-  const setFilter = (activity?: ActivityType) => {
-    router.setParams(activity ? { activity } : { activity: undefined });
+export default function TrainingsScreen() {
+  const params = useLocalSearchParams<{
+    activity?: string;
+    difficulty?: Difficulty;
+    date?: string;
+    query?: string;
+  }>();
+  const { filteredTrainings, filters, setFilters, availableDates } = useTrainings({
+    activityType: normalizeActivity(params.activity),
+    difficulty: params.difficulty,
+    date: normalizeText(params.date),
+    query: normalizeText(params.query),
+  });
+
+  useEffect(() => {
+    setFilters({
+      activityType: normalizeActivity(params.activity),
+      difficulty: params.difficulty,
+      date: normalizeText(params.date),
+      query: normalizeText(params.query),
+    });
+  }, [params.activity, params.date, params.difficulty, params.query, setFilters]);
+
+  const updateFilters = (nextFilters: TrainingFiltersValue) => {
+    setFilters(nextFilters);
+    router.setParams({
+      activity: nextFilters.activityType,
+      difficulty: nextFilters.difficulty,
+      date: nextFilters.date,
+      query: nextFilters.query,
+    });
   };
 
   return (
@@ -31,46 +55,48 @@ export default function TrainingsScreen() {
       <ScreenHeader
         eyebrow="Каталог"
         title="Тренировки"
-        action={
-          <IconButton icon="plus" onPress={() => router.push('/training/create' as Href)} />
+        action={<IconButton icon="plus" onPress={() => router.push('/training/create' as Href)} />}
+      />
+
+      <TrainingFilters
+        filters={filters}
+        dates={availableDates}
+        onChange={updateFilters}
+        onOpenAdvanced={() =>
+          router.push({
+            pathname: '/training/filters',
+            params: {
+              activity: filters.activityType,
+              difficulty: filters.difficulty,
+              date: filters.date,
+              query: filters.query,
+            },
+          } as Href)
         }
       />
 
-      <View style={styles.filters}>
-        {activityOptions.map((item) => (
-          <ActivityButton
-            key={item.id}
-            label={item.label}
-            icon={item.icon}
-            color={item.color}
-            active={activeActivity === item.id}
-            onPress={() => setFilter(activeActivity === item.id ? undefined : item.id)}
-          />
-        ))}
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryTitle}>
+          {filteredTrainings.length === 1
+            ? 'Найдена 1 тренировка'
+            : `Найдено тренировок: ${filteredTrainings.length}`}
+        </Text>
+        <Text style={styles.summaryText}>mock-данные готовы к backend</Text>
       </View>
 
-      <SectionHeader
-        title={activeActivity ? 'Подборка по активности' : 'Все ближайшие'}
-        actionLabel={activeActivity ? 'Сбросить' : 'Создать'}
-        onActionPress={() =>
-          activeActivity ? setFilter(undefined) : router.push('/training/create' as Href)
-        }
-      />
-
       <View style={styles.list}>
-        {workouts.length > 0 ? (
-          workouts.map((workout) => (
-            <WorkoutCard
-              key={workout.id}
-              workout={workout}
-              joined={joinedWorkoutIds.includes(workout.id)}
-              onPress={() => router.push(`/training/${workout.id}` as Href)}
+        {filteredTrainings.length > 0 ? (
+          filteredTrainings.map((training) => (
+            <TrainingCard
+              key={training.id}
+              training={training}
+              onPress={() => router.push(`/training/${training.id}` as Href)}
             />
           ))
         ) : (
           <EmptyState
             title="Тренировок пока нет"
-            text="Создайте первую тренировку для этой активности, и она сразу появится в списке."
+            text="Попробуйте сбросить фильтры или создать новую тренировку для этого района."
           />
         )}
       </View>
@@ -79,11 +105,21 @@ export default function TrainingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  filters: {
+  summaryRow: {
+    alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 28,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  summaryTitle: {
+    color: wheelieColors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  summaryText: {
+    color: wheelieColors.dim,
+    fontSize: 12,
+    fontWeight: '800',
   },
   list: {
     gap: 12,

@@ -1,7 +1,10 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Href, router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ComponentProps } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ActivityBadge } from '@/components/ActivityBadge';
+import { ParticipantCard } from '@/components/ParticipantCard';
 import {
   Detail,
   EmptyState,
@@ -11,95 +14,178 @@ import {
   ScreenHeader,
   wheelieColors,
 } from '@/components/wheelie-ui';
-import { getActivityColor, getActivityLabel, useWheelie } from '@/data/wheelie-store';
+import { useTrainings } from '@/hooks/useTrainings';
+import {
+  formatActivityParams,
+  getActivityColor,
+  getActivityLabel,
+  getTrainingStatus,
+} from '@/services/trainingService';
 
 export default function TrainingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getWorkoutById, joinWorkout, joinedWorkoutIds, getClubById } = useWheelie();
-  const workout = getWorkoutById(id);
+  const { getTrainingById, joinTraining, cancelTraining } = useTrainings();
+  const training = getTrainingById(id);
 
-  if (!workout) {
+  if (!training) {
     return (
       <Screen>
-        <ScreenHeader title="Тренировка" action={<IconButton icon="arrow-left" onPress={() => router.back()} />} />
+        <ScreenHeader
+          title="Тренировка"
+          action={<IconButton icon="arrow-left" onPress={() => router.back()} />}
+        />
         <EmptyState title="Тренировка не найдена" text="Вернитесь к списку и выберите другую карточку." />
       </Screen>
     );
   }
 
-  const activityColor = getActivityColor(workout.activity);
-  const joined = joinedWorkoutIds.includes(workout.id);
-  const club = workout.clubId ? getClubById(workout.clubId) : undefined;
+  const activityColor = getActivityColor(training.activityType);
+  const status = getTrainingStatus(training);
+  const isFull = training.currentParticipants >= training.maxParticipants;
+  const actionDisabled = !training.isJoined && isFull;
+
+  const handleJoin = () => {
+    if (training.isJoined) {
+      cancelTraining(training.id);
+      return;
+    }
+
+    if (isFull) {
+      Alert.alert('Тренировка заполнена');
+      return;
+    }
+
+    joinTraining(training.id);
+  };
 
   return (
     <Screen>
       <ScreenHeader
-        eyebrow={getActivityLabel(workout.activity)}
-        title={workout.title}
+        eyebrow={getActivityLabel(training.activityType)}
+        title={training.title}
         action={<IconButton icon="arrow-left" onPress={() => router.back()} />}
       />
 
       <View style={styles.hero}>
-        <View style={[styles.activityBadge, { backgroundColor: `${activityColor}1f` }]}>
-          <MaterialCommunityIcons
-            name={workout.activity === 'cycling' ? 'bike' : 'map-marker-path'}
-            size={30}
-            color={activityColor}
-          />
+        <View style={styles.heroTop}>
+          <ActivityBadge activityType={training.activityType} />
+          <Pill color={training.isJoined ? wheelieColors.accent : activityColor}>{status}</Pill>
         </View>
-        <Text style={styles.description}>{workout.description}</Text>
+        <Text style={styles.description}>{training.description}</Text>
+        <View style={styles.tagRow}>
+          {training.tags.map((tag) => (
+            <Text key={tag} style={styles.tag}>
+              #{tag}
+            </Text>
+          ))}
+        </View>
       </View>
 
       <View style={styles.metaGrid}>
-        <InfoCard title="Когда" value={`${workout.date}, ${workout.time}`} />
-        <InfoCard title="Дистанция" value={workout.distance} />
-        <InfoCard title="Сложность" value={workout.difficulty} />
-        <InfoCard title="Места" value={`${workout.participants}/${workout.maxParticipants}`} />
+        <InfoCard title="Когда" value={`${training.date}, ${training.time}`} />
+        <InfoCard title="Дистанция" value={training.distance} />
+        <InfoCard title="Сложность" value={training.difficulty} />
+        <InfoCard title="Участники" value={`${training.currentParticipants}/${training.maxParticipants}`} />
       </View>
 
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Старт и маршрут</Text>
         <View style={styles.details}>
-          <Detail icon="map-marker-outline" text={workout.place} />
-          <Detail icon="routes" text={workout.route} />
+          <Detail icon="map-marker-outline" text={training.startPlace} />
+          <Detail icon="map-outline" text={training.district} />
+          <Detail icon="texture-box" text={training.surface} />
+          <Detail icon="routes" text={training.route} />
         </View>
       </View>
 
-      {club ? (
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Параметры активности</Text>
+        <View style={styles.paramGrid}>
+          {formatActivityParams(training).map(([label, value]) => (
+            <InfoCard key={label} title={label} value={String(value)} compact />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.panel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitleInline}>Участники</Text>
+          <Pressable onPress={() => router.push(`/training/${training.id}/participants` as Href)}>
+            <Text style={styles.linkText}>Все</Text>
+          </Pressable>
+        </View>
+        <ParticipantCard participant={training.organizer} isOrganizer />
+        {training.participants
+          .filter((participant) => participant.id !== training.organizer.id)
+          .slice(0, 3)
+          .map((participant) => (
+            <ParticipantCard key={participant.id} participant={participant} />
+          ))}
+      </View>
+
+      <View style={styles.actions}>
         <Pressable
-          style={styles.clubPanel}
-          onPress={() => router.push(`/community/${club.id}` as Href)}>
-          <View>
-            <Text style={styles.panelTitle}>Организатор</Text>
-            <Text style={styles.clubName}>{club.name}</Text>
-            <Text style={styles.clubText}>{club.tagline}</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={wheelieColors.muted} />
+          disabled={actionDisabled}
+          style={[
+            styles.primaryButton,
+            training.isJoined ? styles.secondaryButton : null,
+            actionDisabled ? styles.disabledButton : null,
+          ]}
+          onPress={handleJoin}>
+          <Text
+            style={[
+              styles.primaryButtonText,
+              training.isJoined ? styles.secondaryButtonText : null,
+            ]}>
+            {training.isJoined ? 'Отменить участие' : isFull ? 'Нет мест' : 'Присоединиться'}
+          </Text>
         </Pressable>
-      ) : null}
 
-      <Pressable
-        style={[styles.joinButton, joined ? styles.joinedButton : null]}
-        onPress={() => joinWorkout(workout.id)}>
-        <Text style={[styles.joinButtonText, joined ? styles.joinedButtonText : null]}>
-          {joined ? 'Вы участвуете' : 'Присоединиться'}
-        </Text>
-      </Pressable>
-
-      <View style={styles.statusRow}>
-        <Pill color={activityColor}>{getActivityLabel(workout.activity)}</Pill>
-        <Pill>{joined ? 'Место забронировано' : 'Можно присоединиться'}</Pill>
+        <View style={styles.actionRow}>
+          <SmallAction
+            icon="chat-outline"
+            label="Открыть чат"
+            onPress={() => Alert.alert('Чат тренировки появится после подключения backend')}
+          />
+          <SmallAction
+            icon="map-search-outline"
+            label="Показать на карте"
+            onPress={() => router.push('/map' as Href)}
+          />
+          <SmallAction
+            icon="account-group-outline"
+            label="Участники"
+            onPress={() => router.push(`/training/${training.id}/participants` as Href)}
+          />
+        </View>
       </View>
     </Screen>
   );
 }
 
-function InfoCard({ title, value }: { title: string; value: string }) {
+function InfoCard({ title, value, compact }: { title: string; value: string; compact?: boolean }) {
   return (
-    <View style={styles.infoCard}>
+    <View style={[styles.infoCard, compact ? styles.infoCardCompact : null]}>
       <Text style={styles.infoTitle}>{title}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
+  );
+}
+
+function SmallAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.smallAction} onPress={onPress}>
+      <MaterialCommunityIcons name={icon} size={20} color={wheelieColors.text} />
+      <Text style={styles.smallActionText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -109,21 +195,29 @@ const styles = StyleSheet.create({
     borderColor: wheelieColors.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: 16,
+    gap: 14,
     marginBottom: 14,
     padding: 18,
   },
-  activityBadge: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 54,
-    justifyContent: 'center',
-    width: 54,
+  heroTop: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   description: {
     color: '#c7d0db',
     fontSize: 16,
     lineHeight: 24,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    color: wheelieColors.muted,
+    fontSize: 13,
+    fontWeight: '800',
   },
   metaGrid: {
     flexDirection: 'row',
@@ -141,6 +235,9 @@ const styles = StyleSheet.create({
     minHeight: 84,
     padding: 14,
   },
+  infoCardCompact: {
+    minHeight: 74,
+  },
   infoTitle: {
     color: wheelieColors.dim,
     fontSize: 12,
@@ -150,73 +247,95 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     color: wheelieColors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
+    lineHeight: 21,
   },
   panel: {
     backgroundColor: wheelieColors.surface,
     borderColor: wheelieColors.border,
     borderRadius: 8,
     borderWidth: 1,
+    gap: 12,
     marginBottom: 14,
     padding: 16,
+  },
+  panelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   panelTitle: {
     color: wheelieColors.text,
     fontSize: 18,
     fontWeight: '900',
-    marginBottom: 12,
+  },
+  panelTitleInline: {
+    color: wheelieColors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  linkText: {
+    color: wheelieColors.accent,
+    fontSize: 14,
+    fontWeight: '900',
   },
   details: {
     gap: 10,
   },
-  clubPanel: {
-    alignItems: 'center',
-    backgroundColor: wheelieColors.surface,
-    borderColor: wheelieColors.border,
-    borderRadius: 8,
-    borderWidth: 1,
+  paramGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    padding: 16,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  clubName: {
-    color: wheelieColors.text,
-    fontSize: 16,
-    fontWeight: '900',
-    marginBottom: 4,
+  actions: {
+    gap: 12,
   },
-  clubText: {
-    color: wheelieColors.muted,
-    fontSize: 14,
-    fontWeight: '600',
-    maxWidth: 270,
-  },
-  joinButton: {
+  primaryButton: {
     alignItems: 'center',
     backgroundColor: wheelieColors.accent,
     borderRadius: 8,
     justifyContent: 'center',
     minHeight: 54,
   },
-  joinedButton: {
+  secondaryButton: {
     backgroundColor: wheelieColors.surfaceAlt,
     borderColor: wheelieColors.accent,
     borderWidth: 1,
   },
-  joinButtonText: {
+  disabledButton: {
+    opacity: 0.5,
+  },
+  primaryButtonText: {
     color: '#06110b',
     fontSize: 17,
     fontWeight: '900',
   },
-  joinedButtonText: {
+  secondaryButtonText: {
     color: wheelieColors.accent,
   },
-  statusRow: {
+  actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 14,
+    gap: 10,
+  },
+  smallAction: {
+    alignItems: 'center',
+    backgroundColor: wheelieColors.surfaceAlt,
+    borderColor: wheelieColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: '31%',
+    flexGrow: 1,
+    gap: 7,
+    justifyContent: 'center',
+    minHeight: 74,
+    padding: 10,
+  },
+  smallActionText: {
+    color: wheelieColors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
   },
 });

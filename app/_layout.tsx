@@ -19,7 +19,9 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="training/create" options={{ headerShown: false }} />
+          <Stack.Screen name="training/filters" options={{ headerShown: false }} />
           <Stack.Screen name="training/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="training/[id]/participants" options={{ headerShown: false }} />
           <Stack.Screen name="community/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Окно' }} />
         </Stack>

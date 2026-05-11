@@ -1,24 +1,23 @@
 import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
 
-export type ActivityType = 'cycling' | 'running' | 'walking' | 'fitness';
+import {
+  activityOptions,
+  createTrainingFromDraft,
+  mockTrainings,
+} from '@/mock/trainings';
+import { currentUser } from '@/mock/users';
+import {
+  ActivityType,
+  Difficulty,
+  Participant,
+  Training,
+  TrainingDraft,
+} from '@/types/training';
 
-export type Difficulty = 'Легко' | 'Средне' | 'Сложно' | 'Для всех';
-
-export type Workout = {
-  id: string;
-  title: string;
-  activity: ActivityType;
-  date: string;
-  time: string;
-  place: string;
-  distance: string;
-  difficulty: Difficulty;
-  description: string;
-  maxParticipants: number;
-  participants: number;
-  route: string;
-  clubId?: string;
-};
+export type { ActivityType, Difficulty, Participant, Training };
+export type Workout = Training;
+export type NewWorkout = TrainingDraft;
+export { activityOptions };
 
 export type Club = {
   id: string;
@@ -37,84 +36,6 @@ export type Profile = {
   favoriteActivity: ActivityType;
 };
 
-export type NewWorkout = Omit<Workout, 'id' | 'participants' | 'route'>;
-
-export const activityOptions: {
-  id: ActivityType;
-  label: string;
-  icon: string;
-  color: string;
-}[] = [
-  { id: 'cycling', label: 'Велосипед', icon: 'bike', color: '#8cff6b' },
-  { id: 'running', label: 'Бег', icon: 'run-fast', color: '#60d4ff' },
-  { id: 'walking', label: 'Прогулка', icon: 'walk', color: '#ffd166' },
-  { id: 'fitness', label: 'Фитнес', icon: 'dumbbell', color: '#ff7ab6' },
-];
-
-const initialWorkouts: Workout[] = [
-  {
-    id: 'sunrise-ride',
-    title: 'Утренняя велотренировка',
-    activity: 'cycling',
-    date: 'Сегодня',
-    time: '07:30',
-    place: 'Парк Горького, главный вход',
-    distance: '32 км',
-    difficulty: 'Средне',
-    description:
-      'Спокойный круг по набережной с двумя ускорениями. Подойдет тем, кто уверенно держит темп в группе.',
-    maxParticipants: 18,
-    participants: 12,
-    route: 'Набережная - Воробьевы горы - Лужники',
-    clubId: 'wheelie-cycling',
-  },
-  {
-    id: 'tempo-run',
-    title: 'Темповый бег у воды',
-    activity: 'running',
-    date: 'Завтра',
-    time: '18:00',
-    place: 'Нескучный сад',
-    distance: '8 км',
-    difficulty: 'Сложно',
-    description: 'Разминка, темповый блок 5 км и заминка. Бежим компактной группой.',
-    maxParticipants: 12,
-    participants: 8,
-    route: 'Нескучный сад - Крымский мост - обратно',
-    clubId: 'run-pulse',
-  },
-  {
-    id: 'city-walk',
-    title: 'Вечерняя прогулка',
-    activity: 'walking',
-    date: 'Пятница',
-    time: '20:00',
-    place: 'Чистые пруды',
-    distance: '6 км',
-    difficulty: 'Легко',
-    description: 'Неформальная прогулка по центру для восстановления после рабочей недели.',
-    maxParticipants: 20,
-    participants: 14,
-    route: 'Чистые пруды - Покровка - Китай-город',
-    clubId: 'urban-steps',
-  },
-  {
-    id: 'core-mobility',
-    title: 'Кор и мобильность',
-    activity: 'fitness',
-    date: 'Суббота',
-    time: '11:00',
-    place: 'Студия Пульс',
-    distance: '45 мин',
-    difficulty: 'Для всех',
-    description: 'Функциональная тренировка без тяжелого инвентаря: корпус, баланс и растяжка.',
-    maxParticipants: 16,
-    participants: 10,
-    route: 'Зал 2, зона функционального тренинга',
-    clubId: 'pulse-fit',
-  },
-];
-
 const initialClubs: Club[] = [
   {
     id: 'wheelie-cycling',
@@ -124,7 +45,7 @@ const initialClubs: Club[] = [
     members: 248,
     tagline: 'Групповые заезды без гонки за эго',
     description:
-      'Клуб для городских райдеров: тренировки по выходным, спокойные восстановительные заезды и маршруты с кофе-питстопами.',
+      'Клуб для городских райдеров: тренировки по выходным, восстановительные заезды и маршруты с кофе-питстопами.',
   },
   {
     id: 'run-pulse',
@@ -134,7 +55,7 @@ const initialClubs: Club[] = [
     members: 186,
     tagline: 'Темп, техника и поддержка',
     description:
-      'Беговое сообщество с тренировками на скорость, легкими кроссами и подготовкой к стартам.',
+      'Беговое сообщество с тренировками на скорость, лёгкими кроссами и подготовкой к стартам.',
   },
   {
     id: 'urban-steps',
@@ -166,60 +87,104 @@ const initialProfile: Profile = {
 };
 
 type WheelieContextValue = {
-  workouts: Workout[];
+  trainings: Training[];
+  workouts: Training[];
   clubs: Club[];
   profile: Profile;
   joinedWorkoutIds: string[];
   joinedClubIds: string[];
-  getWorkoutById: (id: string) => Workout | undefined;
+  getTrainingById: (id: string) => Training | undefined;
+  getWorkoutById: (id: string) => Training | undefined;
   getClubById: (id: string) => Club | undefined;
-  getWorkoutsByActivity: (activity?: ActivityType) => Workout[];
-  createWorkout: (workout: NewWorkout) => Workout;
+  getWorkoutsByActivity: (activity?: ActivityType) => Training[];
+  createWorkout: (workout: TrainingDraft) => Training;
+  createTraining: (training: TrainingDraft) => Training;
   joinWorkout: (id: string) => void;
+  cancelWorkout: (id: string) => void;
   joinClub: (id: string) => void;
   updateProfile: (profile: Profile) => void;
 };
 
 const WheelieContext = createContext<WheelieContextValue | null>(null);
 
+function syncParticipation(training: Training, participants: Participant[], isJoined: boolean): Training {
+  return {
+    ...training,
+    participants,
+    currentParticipants: participants.length,
+    participantCount: participants.length,
+    isJoined,
+  };
+}
+
 export function WheelieProvider({ children }: { children: ReactNode }) {
-  const [workouts, setWorkouts] = useState(initialWorkouts);
+  const [trainings, setTrainings] = useState(mockTrainings);
   const [clubs, setClubs] = useState(initialClubs);
   const [profile, setProfile] = useState(initialProfile);
-  const [joinedWorkoutIds, setJoinedWorkoutIds] = useState<string[]>([]);
   const [joinedClubIds, setJoinedClubIds] = useState<string[]>([]);
+
+  const joinedWorkoutIds = useMemo(
+    () => trainings.filter((training) => training.isJoined).map((training) => training.id),
+    [trainings],
+  );
 
   const value = useMemo<WheelieContextValue>(
     () => ({
-      workouts,
+      trainings,
+      workouts: trainings,
       clubs,
       profile,
       joinedWorkoutIds,
       joinedClubIds,
-      getWorkoutById: (id) => workouts.find((workout) => workout.id === id),
+      getTrainingById: (id) => trainings.find((training) => training.id === id),
+      getWorkoutById: (id) => trainings.find((training) => training.id === id),
       getClubById: (id) => clubs.find((club) => club.id === id),
       getWorkoutsByActivity: (activity) =>
-        activity ? workouts.filter((workout) => workout.activity === activity) : workouts,
+        activity ? trainings.filter((training) => training.activityType === activity) : trainings,
       createWorkout: (workout) => {
-        const created: Workout = {
-          ...workout,
-          id: `training-${Date.now()}`,
-          participants: 1,
-          route: workout.place,
-        };
+        const created = createTrainingFromDraft(workout);
 
-        setWorkouts((current) => [created, ...current]);
-        setJoinedWorkoutIds((current) => [created.id, ...current]);
+        setTrainings((current) => [created, ...current]);
+        return created;
+      },
+      createTraining: (training) => {
+        const created = createTrainingFromDraft(training);
+
+        setTrainings((current) => [created, ...current]);
         return created;
       },
       joinWorkout: (id) => {
-        setJoinedWorkoutIds((current) => (current.includes(id) ? current : [...current, id]));
-        setWorkouts((current) =>
-          current.map((workout) =>
-            workout.id === id && workout.participants < workout.maxParticipants
-              ? { ...workout, participants: workout.participants + 1 }
-              : workout,
-          ),
+        setTrainings((current) =>
+          current.map((training) => {
+            if (
+              training.id !== id ||
+              training.isJoined ||
+              training.currentParticipants >= training.maxParticipants
+            ) {
+              return training;
+            }
+
+            return syncParticipation(
+              training,
+              [...training.participants, currentUser],
+              true,
+            );
+          }),
+        );
+      },
+      cancelWorkout: (id) => {
+        setTrainings((current) =>
+          current.map((training) => {
+            if (training.id !== id || !training.isJoined) {
+              return training;
+            }
+
+            const participants = training.participants.filter(
+              (participant) => participant.id !== currentUser.id,
+            );
+
+            return syncParticipation(training, participants, false);
+          }),
         );
       },
       joinClub: (id) => {
@@ -230,7 +195,7 @@ export function WheelieProvider({ children }: { children: ReactNode }) {
       },
       updateProfile: setProfile,
     }),
-    [clubs, joinedClubIds, joinedWorkoutIds, profile, workouts],
+    [clubs, joinedClubIds, joinedWorkoutIds, profile, trainings],
   );
 
   return <WheelieContext.Provider value={value}>{children}</WheelieContext.Provider>;
@@ -246,10 +211,4 @@ export function useWheelie() {
   return value;
 }
 
-export function getActivityLabel(activity: ActivityType) {
-  return activityOptions.find((option) => option.id === activity)?.label ?? 'Тренировка';
-}
-
-export function getActivityColor(activity: ActivityType) {
-  return activityOptions.find((option) => option.id === activity)?.color ?? '#78ff8e';
-}
+export { getActivityColor, getActivityIcon, getActivityLabel } from '@/services/trainingService';

@@ -4,10 +4,10 @@ import { Pressable, ScrollView, StyleSheet, Text, TextStyle, View, ViewStyle } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  Workout,
   getActivityColor,
   getActivityLabel,
 } from '@/data/wheelie-store';
+import { Training } from '@/types/training';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -154,11 +154,11 @@ export function WorkoutCard({
   joined,
   onPress,
 }: {
-  workout: Workout;
+  workout: Training;
   joined?: boolean;
   onPress: () => void;
 }) {
-  const color = getActivityColor(workout.activity);
+  const color = getActivityColor(workout.activityType);
 
   return (
     <Pressable style={styles.workoutCard} onPress={onPress}>
@@ -166,7 +166,7 @@ export function WorkoutCard({
       <View style={styles.workoutCardMain}>
         <View style={styles.cardTitleRow}>
           <View style={styles.cardTitleBlock}>
-            <Text style={styles.cardType}>{getActivityLabel(workout.activity)}</Text>
+            <Text style={styles.cardType}>{getActivityLabel(workout.activityType)}</Text>
             <Text style={styles.cardTitle}>{workout.title}</Text>
           </View>
           <Pill color={joined ? wheelieColors.accent : wheelieColors.text}>
@@ -175,11 +175,11 @@ export function WorkoutCard({
         </View>
 
         <View style={styles.details}>
-          <Detail icon="map-marker-outline" text={workout.place} />
+          <Detail icon="map-marker-outline" text={workout.startPlace} />
           <Detail icon="calendar-clock" text={`${workout.date}, ${workout.time}`} />
           <Detail
             icon="account-group-outline"
-            text={`${workout.participants}/${workout.maxParticipants} участников`}
+            text={`${workout.currentParticipants}/${workout.maxParticipants} участников`}
           />
         </View>
       </View>
