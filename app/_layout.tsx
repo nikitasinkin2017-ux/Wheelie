@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { ThemeTransition } from '@/components/animations/ThemeTransition';
 import { WheelieProvider } from '@/data/wheelie-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -16,8 +17,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <WheelieProvider>
-        <Stack>
+        <Stack screenOptions={{ animation: 'fade_from_bottom' }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="activity/start" options={{ headerShown: false }} />
+          <Stack.Screen name="places/index" options={{ headerShown: false }} />
+          <Stack.Screen name="route/build" options={{ headerShown: false }} />
           <Stack.Screen name="training/create" options={{ headerShown: false }} />
           <Stack.Screen name="training/filters" options={{ headerShown: false }} />
           <Stack.Screen name="training/[id]" options={{ headerShown: false }} />
@@ -25,7 +29,8 @@ export default function RootLayout() {
           <Stack.Screen name="community/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Окно' }} />
         </Stack>
-        <StatusBar style="light" />
+        <ThemeTransition />
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       </WheelieProvider>
     </ThemeProvider>
   );

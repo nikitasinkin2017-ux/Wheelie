@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ComponentProps, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -28,7 +28,7 @@ export function Screen({
   contentStyle,
 }: {
   children: ReactNode;
-  contentStyle?: ViewStyle;
+  contentStyle?: StyleProp<ViewStyle>;
 }) {
   const insets = useSafeAreaInsets();
 

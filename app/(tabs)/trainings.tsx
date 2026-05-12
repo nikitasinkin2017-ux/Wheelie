@@ -1,8 +1,9 @@
 import { Href, router, useLocalSearchParams } from 'expo-router';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, IconButton, Screen, ScreenHeader, wheelieColors } from '@/components/wheelie-ui';
+import { EmptyState, Screen, ScreenHeader, wheelieColors } from '@/components/wheelie-ui';
 import { TrainingCard } from '@/components/TrainingCard';
 import { TrainingFilters } from '@/components/TrainingFilters';
 import { useTrainings } from '@/hooks/useTrainings';
@@ -55,7 +56,7 @@ export default function TrainingsScreen() {
       <ScreenHeader
         eyebrow="Каталог"
         title="Тренировки"
-        action={<IconButton icon="plus" onPress={() => router.push('/training/create' as Href)} />}
+        action={<CreateButton />}
       />
 
       <TrainingFilters
@@ -104,7 +105,30 @@ export default function TrainingsScreen() {
   );
 }
 
+function CreateButton() {
+  return (
+    <Pressable style={styles.createButton} onPress={() => router.push('/training/create' as Href)}>
+      <MaterialCommunityIcons name="plus" size={18} color="#06110b" />
+      <Text style={styles.createButtonText}>Создать</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  createButton: {
+    alignItems: 'center',
+    backgroundColor: wheelieColors.accent,
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 5,
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  createButtonText: {
+    color: '#06110b',
+    fontSize: 14,
+    fontWeight: '900',
+  },
   summaryRow: {
     alignItems: 'center',
     flexDirection: 'row',

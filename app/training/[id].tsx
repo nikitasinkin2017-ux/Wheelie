@@ -23,7 +23,7 @@ import {
 } from '@/services/trainingService';
 
 export default function TrainingDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { created, id } = useLocalSearchParams<{ created?: string; id: string }>();
   const { getTrainingById, joinTraining, cancelTraining } = useTrainings();
   const training = getTrainingById(id);
 
@@ -65,6 +65,13 @@ export default function TrainingDetailScreen() {
         title={training.title}
         action={<IconButton icon="arrow-left" onPress={() => router.back()} />}
       />
+
+      {created === '1' ? (
+        <View style={styles.successBanner}>
+          <MaterialCommunityIcons name="check-circle-outline" size={20} color={wheelieColors.accent} />
+          <Text style={styles.successText}>Тренировка создана</Text>
+        </View>
+      ) : null}
 
       <View style={styles.hero}>
         <View style={styles.heroTop}>
@@ -143,11 +150,6 @@ export default function TrainingDetailScreen() {
 
         <View style={styles.actionRow}>
           <SmallAction
-            icon="chat-outline"
-            label="Открыть чат"
-            onPress={() => Alert.alert('Чат тренировки появится после подключения backend')}
-          />
-          <SmallAction
             icon="map-search-outline"
             label="Показать на карте"
             onPress={() => router.push('/map' as Href)}
@@ -190,6 +192,22 @@ function SmallAction({
 }
 
 const styles = StyleSheet.create({
+  successBanner: {
+    alignItems: 'center',
+    backgroundColor: '#78ff8e1a',
+    borderColor: '#78ff8e66',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+    padding: 13,
+  },
+  successText: {
+    color: wheelieColors.accent,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   hero: {
     backgroundColor: wheelieColors.surface,
     borderColor: wheelieColors.border,

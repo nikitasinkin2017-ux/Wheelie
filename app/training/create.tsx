@@ -143,7 +143,10 @@ export default function CreateTrainingScreen() {
     });
 
     Alert.alert('Тренировка создана');
-    router.replace(`/training/${created.id}` as Href);
+    router.replace({
+      pathname: '/training/[id]',
+      params: { id: created.id, created: '1' },
+    } as Href);
   };
 
   return (
